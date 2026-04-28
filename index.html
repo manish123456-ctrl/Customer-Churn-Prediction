@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Customer Churn Prediction — Manish Singh</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --accent: #6ee7b7;
+    --accent2: #38bdf8;
+    --accent3: #a78bfa;
+    --text: #f0f0f5;
+    --muted: #6b6b7e;
+    --muted2: #9999aa;
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* noise overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 48px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(16px);
+  }
+  .nav-logo {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 17px;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .nav-logo span { color: var(--accent); }
+  .nav-links { display: flex; gap: 32px; }
+  .nav-links a {
+    font-size: 13px;
+    color: var(--muted2);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--accent); }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 120px 48px 80px;
+    position: relative;
+  }
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 50% at 70% 50%, rgba(110,231,183,0.06) 0%, transparent 70%),
+                radial-gradient(ellipse 40% 40% at 20% 80%, rgba(167,139,250,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    position: relative;
+  }
+  .hero-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    border: 1px solid rgba(110,231,183,0.2);
+    padding: 5px 12px;
+    border-radius: 100px;
+    margin-bottom: 24px;
+    letter-spacing: 0.05em;
+  }
+  .hero-tag .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(38px, 5vw, 58px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 20px;
+  }
+  .hero h1 .line2 { color: var(--accent); }
+  .hero-desc {
+    color: var(--muted2);
+    font-size: 16px;
+    line-height: 1.7;
+    margin-bottom: 36px;
+    max-width: 480px;
+  }
+  .hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: #0a0a0f;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 13px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--border2);
+    color: var(--muted2);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* metrics strip */
+  .metrics-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .metric-item {}
+  .metric-val {
+    font-family: var(--font-display);
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .metric-val.green { color: var(--accent); }
+  .metric-val.blue { color: var(--accent2); }
+  .metric-val.purple { color: var(--accent3); }
+  .metric-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .metric-divider {
+    grid-column: 1 / -1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* SECTION */
+  section {
+    padding: 80px 48px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-family: var(--font-display);
+    font-size: clamp(28px, 3vw, 40px);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-bottom: 48px;
+    line-height: 1.1;
+  }
+
+  /* PIPELINE */
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .pipeline-step {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 24px;
+    align-items: start;
+    padding: 24px 0;
+    border-bottom: 1px solid var(--border);
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: opacity 0.5s, transform 0.5s;
+  }
+  .pipeline-step.visible { opacity: 1; transform: translateX(0); }
+  .step-num {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--muted);
+    padding-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .step-content {}
+  .step-title {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+  .step-desc { color: var(--muted2); font-size: 14px; line-height: 1.6; }
+  .step-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 3px 9px;
+    border-radius: 100px;
+    border: 1px solid var(--border2);
+    color: var(--muted2);
+    letter-spacing: 0.02em;
+  }
+  .tag.green { border-color: rgba(110,231,183,0.3); color: var(--accent); }
+  .tag.blue { border-color: rgba(56,189,248,0.3); color: var(--accent2); }
+  .tag.purple { border-color: rgba(167,139,250,0.3); color: var(--accent3); }
+
+  /* RESULTS */
+  .results-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    transition: border-color 0.2s, transform 0.2s;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.5s, transform 0.5s, border-color 0.2s;
+  }
+  .result-card.visible { opacity: 1; transform: translateY(0); }
+  .result-card:hover { border-color: var(--border2); transform: translateY(-3px); }
+  .result-card.featured { border-color: rgba(110,231,183,0.3); }
+  .result-model {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .winner-badge {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    background: rgba(110,231,183,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(110,231,183,0.3);
+    padding: 2px 7px;
+    border-radius: 100px;
+    letter-spacing: 0.05em;
+  }
+  .result-rows { display: flex; flex-direction: column; gap: 10px; }
+  .result-row { display: flex; justify-content: space-between; align-items: center; }
+  .result-key { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
+  .result-val { font-size: 14px; font-weight: 500; font-family: var(--font-display); }
+  .bar-wrap { margin-top: 16px; }
+  .bar-label { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-bottom: 6px; }
+  .bar-track {
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 100px;
+    background: var(--accent);
+    width: 0;
+    transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .bar-fill.blue { background: var(--accent2); }
+  .bar-fill.purple { background: var(--accent3); }
+
+  /* CONFUSION MATRIX */
+  .matrix-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: start;
+  }
+  .matrix-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+  }
+  .matrix-title {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: var(--muted2);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 11px;
+    font-family: var(--font-mono);
+  }
+  .matrix-grid {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr;
+    grid-template-rows: auto 1fr 1fr;
+    gap: 4px;
+  }
+  .matrix-corner { }
+  .matrix-header {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    padding: 8px 4px;
+    letter-spacing: 0.05em;
+  }
+  .matrix-row-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    padding-right: 8px;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+  .matrix-cell {
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 12px;
+    min-height: 80px;
+  }
+  .cell-num {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .cell-label { font-size: 10px; font-family: var(--font-mono); }
+  .cell-tp { background: rgba(110,231,183,0.12); }
+  .cell-tp .cell-num { color: var(--accent); }
+  .cell-tp .cell-label { color: rgba(110,231,183,0.5); }
+  .cell-tn { background: rgba(56,189,248,0.1); }
+  .cell-tn .cell-num { color: var(--accent2); }
+  .cell-tn .cell-label { color: rgba(56,189,248,0.5); }
+  .cell-fp { background: rgba(255,255,255,0.04); }
+  .cell-fp .cell-num { color: var(--muted2); }
+  .cell-fp .cell-label { color: var(--muted); }
+  .cell-fn { background: rgba(255,255,255,0.04); }
+  .cell-fn .cell-num { color: var(--muted2); }
+  .cell-fn .cell-label { color: var(--muted); }
+
+  .insight-list { display: flex; flex-direction: column; gap: 16px; }
+  .insight-item {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .insight-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-weight: 500;
+  }
+  .insight-icon.g { background: rgba(110,231,183,0.1); color: var(--accent); }
+  .insight-icon.b { background: rgba(56,189,248,0.1); color: var(--accent2); }
+  .insight-icon.p { background: rgba(167,139,250,0.1); color: var(--accent3); }
+  .insight-text { font-size: 13px; color: var(--muted2); line-height: 1.6; }
+  .insight-text strong { color: var(--text); font-weight: 500; }
+
+  /* FEATURES */
+  .features-list { display: flex; flex-direction: column; gap: 10px; }
+  .feature-row {
+    display: grid;
+    grid-template-columns: 120px 1fr 60px;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: opacity 0.4s, transform 0.4s;
+  }
+  .feature-row.visible { opacity: 1; transform: translateX(0); }
+  .feature-name { font-family: var(--font-mono); font-size: 12px; color: var(--muted2); }
+  .feature-bar-track { height: 6px; background: var(--surface2); border-radius: 100px; overflow: hidden; }
+  .feature-bar { height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--accent), var(--accent2)); width: 0; transition: width 1.2s cubic-bezier(0.4,0,0.2,1); }
+  .feature-pct { font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--accent); text-align: right; }
+
+  /* CODE */
+  .code-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .code-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .code-title { font-family: var(--font-mono); font-size: 12px; color: var(--muted2); }
+  .code-dots { display: flex; gap: 5px; }
+  .code-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .code-body {
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--muted2);
+    overflow-x: auto;
+  }
+  .kw { color: var(--accent3); }
+  .fn { color: var(--accent2); }
+  .str { color: var(--accent); }
+  .cm { color: var(--muted); font-style: italic; }
+  .num { color: #f9a8d4; }
+
+  /* RESUME SECTION */
+  .resume-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 12px 12px 0;
+    padding: 28px 32px;
+  }
+  .resume-project-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .resume-subtitle {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent2);
+    margin-bottom: 16px;
+  }
+  .resume-bullets { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .resume-bullets li {
+    font-size: 14px;
+    color: var(--muted2);
+    padding-left: 16px;
+    position: relative;
+    line-height: 1.6;
+  }
+  .resume-bullets li::before {
+    content: '▸';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-size: 10px;
+    top: 3px;
+  }
+  .resume-bullets li strong { color: var(--text); font-weight: 500; }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  /* ANIMATIONS */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .hero-left > * {
+    animation: fadeIn 0.7s both;
+  }
+  .hero-left > *:nth-child(1) { animation-delay: 0.1s; }
+  .hero-left > *:nth-child(2) { animation-delay: 0.25s; }
+  .hero-left > *:nth-child(3) { animation-delay: 0.4s; }
+  .hero-left > *:nth-child(4) { animation-delay: 0.55s; }
+  .metrics-card { animation: fadeIn 0.7s 0.4s both; }
+
+  /* DIVIDER */
+  .full-divider {
+    width: 100%;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* scroll indicator */
+  .scroll-hint {
+    position: absolute;
+    bottom: 32px;
+    left: 48px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .scroll-line {
+    width: 32px;
+    height: 1px;
+    background: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">Manish<span>.</span>Singh</div>
+  <div class="nav-links">
+    <a href="#pipeline">Pipeline</a>
+    <a href="#results">Results</a>
+    <a href="#features">Features</a>
+    <a href="#code">Code</a>
+
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid">
+    <div class="hero-left">
+      <div class="hero-tag">
+        <span class="dot"></span>
+        ML Classification Project
+      </div>
+      <h1>Customer<br><span class="line2">Churn</span><br>Prediction</h1>
+      <p class="hero-desc">A full end-to-end machine learning pipeline to predict telecom customer churn using XGBoost, SMOTE balancing, and feature importance analysis on 7,032 records.</p>
+      <div class="hero-ctas">
+        <a href="https://github.com/manish123456-ctrl/Customer-Churn-Prediction" class="btn-primary" target="_blank">
+          View on GitHub ↗
+        </a>
+        <a href="#pipeline" class="btn-ghost">See Pipeline</a>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="metrics-card">
+        <div class="metric-item">
+          <div class="metric-val green">0.80</div>
+          <div class="metric-label">ROC-AUC Score</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-val blue">7,032</div>
+          <div class="metric-label">Records processed</div>
+        </div>
+        <div class="metric-divider"></div>
+        <div class="metric-item">
+          <div class="metric-val purple">3</div>
+          <div class="metric-label">Models compared</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-val green">19</div>
+          <div class="metric-label">Features used</div>
+        </div>
+        <div class="metric-divider"></div>
+        <div class="metric-item" style="grid-column:1/-1;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <span class="metric-label">XGBoost Accuracy</span>
+            <span style="font-family:var(--font-mono);font-size:12px;color:var(--accent);">79%</span>
+          </div>
+          <div class="bar-track" style="height:6px;">
+            <div class="bar-fill" id="hero-bar" style="width:0%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-hint">
+    <div class="scroll-line"></div>
+    scroll to explore
+  </div>
+</div>
+
+<div class="full-divider"></div>
+
+<!-- PIPELINE -->
+<section id="pipeline">
+  <div class="section-label">01 — Methodology</div>
+  <div class="section-title">End-to-end pipeline</div>
+  <div class="pipeline">
+    <div class="pipeline-step">
+      <div class="step-num">01</div>
+      <div class="step-content">
+        <div class="step-title">Data loading & EDA</div>
+        <div class="step-desc">Loaded the Telco Customer Churn dataset (7,043 rows, 21 columns) from Kaggle. Explored distributions, missing values, and found ~26% churn rate — indicating class imbalance.</div>
+        <div class="step-tags">
+          <span class="tag green">pandas</span>
+          <span class="tag green">seaborn</span>
+          <span class="tag green">matplotlib</span>
+        </div>
+      </div>
+    </div>
+    <div class="pipeline-step">
+      <div class="step-num">02</div>
+      <div class="step-content">
+        <div class="step-title">Data cleaning & preprocessing</div>
+        <div class="step-desc">Fixed TotalCharges column (spaces stored as NaN), dropped 11 null rows, removed customerID, encoded all categorical features with LabelEncoder, and scaled with StandardScaler.</div>
+        <div class="step-tags">
+          <span class="tag blue">LabelEncoder</span>
+          <span class="tag blue">StandardScaler</span>
+          <span class="tag">to_numeric</span>
+          <span class="tag">dropna</span>
+        </div>
+      </div>
+    </div>
+    <div class="pipeline-step">
+      <div class="step-num">03</div>
+      <div class="step-content">
+        <div class="step-title">Class imbalance — SMOTE</div>
+        <div class="step-desc">Applied SMOTE (Synthetic Minority Oversampling Technique) on training data only. Balanced 4,134 vs 1,491 samples to 4,134 vs 4,134, ensuring the model learns both churn and non-churn patterns equally.</div>
+        <div class="step-tags">
+          <span class="tag purple">SMOTE</span>
+          <span class="tag purple">imbalanced-learn</span>
+          <span class="tag">train_test_split</span>
+        </div>
+      </div>
+    </div>
+    <div class="pipeline-step">
+      <div class="step-num">04</div>
+      <div class="step-content">
+        <div class="step-title">Model training & comparison</div>
+        <div class="step-desc">Trained three models — Logistic Regression (baseline), Random Forest, and XGBoost. Evaluated each on accuracy, precision, recall, F1-score, and ROC-AUC across 1,407 test samples.</div>
+        <div class="step-tags">
+          <span class="tag green">XGBoost</span>
+          <span class="tag blue">Random Forest</span>
+          <span class="tag">Logistic Regression</span>
+        </div>
+      </div>
+    </div>
+    <div class="pipeline-step">
+      <div class="step-num">05</div>
+      <div class="step-content">
+        <div class="step-title">Evaluation & visualization</div>
+        <div class="step-desc">Generated confusion matrix, ROC curve (AUC=0.80), and feature importance chart. Identified tenure as the strongest predictor — customers with shorter tenure churn significantly more.</div>
+        <div class="step-tags">
+          <span class="tag green">ROC-AUC</span>
+          <span class="tag">confusion matrix</span>
+          <span class="tag">feature importance</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="full-divider"></div>
+
+<!-- RESULTS -->
+<section id="results">
+  <div class="section-label">02 — Model Performance</div>
+  <div class="section-title">Results comparison</div>
+  <div class="results-grid">
+    <div class="result-card">
+      <div class="result-model">Logistic Regression</div>
+      <div class="result-rows">
+        <div class="result-row">
+          <span class="result-key">accuracy</span>
+          <span class="result-val">74%</span>
+        </div>
+        <div class="result-row">
+          <span class="result-key">roc-auc</span>
+          <span class="result-val">0.8311</span>
+        </div>
+        <div class="result-row">
+          <span class="result-key">recall (churn)</span>
+          <span class="result-val">0.80</span>
+        </div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label">ROC-AUC</div>
+        <div class="bar-track">
+          <div class="bar-fill purple" data-width="83"></div>
+        </div>
+      </div>
+    </div>
+    <div class="result-card">
+      <div class="result-model">Random Forest</div>
+      <div class="result-rows">
+        <div class="result-row">
+          <span class="result-key">accuracy</span>
+          <span class="result-val">77%</span>
+        </div>
+        <div class="result-row">
+          <span class="result-key">roc-auc</span>
+          <span class="result-val">0.8139</span>
+        </div>
+        <div class="result-row">
+          <span class="result-key">recall (churn)</span>
+          <span class="result-val">0.59</span>
+        </div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label">ROC-AUC</div>
+        <div class="bar-track">
+          <div class="bar-fill blue" data-width="81"></div>
+        </div>
+      </div>
+    </div>
+    <div class="result-card featured">
+      <div class="result-model">
+        XGBoost
+        <span class="winner-badge">BEST</span>
+      </div>
+      <div class="result-rows">
+        <div class="result-row">
+          <span class="result-key">accuracy</span>
+          <span class="result-val" style="color:var(--accent);">79%</span>
+        </div>
+        <div class="result-row">
+          <span class="result-key">roc-auc</span>
+          <span class="result-val" style="color:var(--accent);">0.80</span>
+        </div>
+        <div class="result-row">
+          <span class="result-key">correct churn</span>
+          <span class="result-val" style="color:var(--accent);">205</span>
+        </div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label">ROC-AUC</div>
+        <div class="bar-track">
+          <div class="bar-fill" data-width="80"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- confusion matrix -->
+  <div style="margin-top:40px;">
+    <div class="matrix-section">
+      <div class="matrix-wrap">
+        <div class="matrix-title">XGBoost — confusion matrix</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-bottom:12px;text-align:center;">predicted →</div>
+        <div class="matrix-grid">
+          <div class="matrix-corner"></div>
+          <div class="matrix-header">No Churn</div>
+          <div class="matrix-header">Churn</div>
+          <div class="matrix-row-label">No Churn</div>
+          <div class="matrix-cell cell-tn">
+            <div class="cell-num">849</div>
+            <div class="cell-label">True Neg</div>
+          </div>
+          <div class="matrix-cell cell-fp">
+            <div class="cell-num">184</div>
+            <div class="cell-label">False Pos</div>
+          </div>
+          <div class="matrix-row-label">Churn</div>
+          <div class="matrix-cell cell-fn">
+            <div class="cell-num">169</div>
+            <div class="cell-label">False Neg</div>
+          </div>
+          <div class="matrix-cell cell-tp">
+            <div class="cell-num">205</div>
+            <div class="cell-label">True Pos</div>
+          </div>
+        </div>
+      </div>
+      <div class="insight-list">
+        <div class="insight-item">
+          <div class="insight-icon g">✓</div>
+          <div class="insight-text"><strong>849 customers</strong> correctly identified as non-churners — minimizing unnecessary retention costs.</div>
+        </div>
+        <div class="insight-item">
+          <div class="insight-icon b">!</div>
+          <div class="insight-text"><strong>205 churners caught</strong> — the model successfully flags 55% of actual churners for intervention.</div>
+        </div>
+        <div class="insight-item">
+          <div class="insight-icon p">~</div>
+          <div class="insight-text"><strong>169 missed churners</strong> — false negatives the model didn't catch; further tuning could reduce this.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="full-divider"></div>
+
+<!-- FEATURE IMPORTANCE -->
+<section id="features">
+  <div class="section-label">03 — Insights</div>
+  <div class="section-title">Top feature importances</div>
+  <div class="features-list">
+    <div class="feature-row">
+      <span class="feature-name">tenure</span>
+      <div class="feature-bar-track"><div class="feature-bar" data-width="92"></div></div>
+      <span class="feature-pct">0.092</span>
+    </div>
+    <div class="feature-row">
+      <span class="feature-name">TotalCharges</span>
+      <div class="feature-bar-track"><div class="feature-bar" data-width="78"></div></div>
+      <span class="feature-pct">0.078</span>
+    </div>
+    <div class="feature-row">
+      <span class="feature-name">MonthlyCharges</span>
+      <div class="feature-bar-track"><div class="feature-bar" data-width="71"></div></div>
+      <span class="feature-pct">0.071</span>
+    </div>
+    <div class="feature-row">
+      <span class="feature-name">Contract</span>
+      <div class="feature-bar-track"><div class="feature-bar" data-width="64"></div></div>
+      <span class="feature-pct">0.064</span>
+    </div>
+    <div class="feature-row">
+      <span class="feature-name">InternetService</span>
+      <div class="feature-bar-track"><div class="feature-bar" data-width="55"></div></div>
+      <span class="feature-pct">0.055</span>
+    </div>
+    <div class="feature-row">
+      <span class="feature-name">PaymentMethod</span>
+      <div class="feature-bar-track"><div class="feature-bar" data-width="47"></div></div>
+      <span class="feature-pct">0.047</span>
+    </div>
+    <div class="feature-row">
+      <span class="feature-name">OnlineSecurity</span>
+      <div class="feature-bar-track"><div class="feature-bar" data-width="38"></div></div>
+      <span class="feature-pct">0.038</span>
+    </div>
+    <div class="feature-row">
+      <span class="feature-name">TechSupport</span>
+      <div class="feature-bar-track"><div class="feature-bar" data-width="32"></div></div>
+      <span class="feature-pct">0.032</span>
+    </div>
+  </div>
+  <p style="margin-top:20px;font-size:13px;color:var(--muted2);font-family:var(--font-mono);">→ Tenure is the strongest predictor. Customers with shorter tenure and higher monthly charges are most likely to churn.</p>
+</section>
+
+<div class="full-divider"></div>
+
+<!-- CODE SNIPPETS -->
+<section id="code">
+  <div class="section-label">04 — Implementation</div>
+  <div class="section-title">Key code snippets</div>
+  <div class="code-section">
+    <div class="code-card">
+      <div class="code-header">
+        <div class="code-dots">
+          <div class="code-dot" style="background:#ff5f57"></div>
+          <div class="code-dot" style="background:#febc2e"></div>
+          <div class="code-dot" style="background:#28c840"></div>
+        </div>
+        <span class="code-title">smote_balancing.py</span>
+      </div>
+      <div class="code-body">
+<span class="kw">from</span> imblearn.over_sampling <span class="kw">import</span> SMOTE<br>
+<span class="kw">from</span> sklearn.model_selection <span class="kw">import</span> train_test_split<br><br>
+X_train, X_test, y_train, y_test = <span class="fn">train_test_split</span>(<br>
+&nbsp;&nbsp;&nbsp;&nbsp;X_scaled, y,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;test_size=<span class="num">0.2</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;random_state=<span class="num">42</span><br>
+)<br><br>
+smote = <span class="fn">SMOTE</span>(random_state=<span class="num">42</span>)<br>
+X_bal, y_bal = smote.<span class="fn">fit_resample</span>(X_train, y_train)<br><br>
+<span class="cm"># Before: {0: 4134, 1: 1491}</span><br>
+<span class="cm"># After:  {0: 4134, 1: 4134}</span>
+      </div>
+    </div>
+    <div class="code-card">
+      <div class="code-header">
+        <div class="code-dots">
+          <div class="code-dot" style="background:#ff5f57"></div>
+          <div class="code-dot" style="background:#febc2e"></div>
+          <div class="code-dot" style="background:#28c840"></div>
+        </div>
+        <span class="code-title">model_training.py</span>
+      </div>
+      <div class="code-body">
+<span class="kw">from</span> xgboost <span class="kw">import</span> XGBClassifier<br>
+<span class="kw">from</span> sklearn.metrics <span class="kw">import</span> roc_auc_score<br><br>
+model = <span class="fn">XGBClassifier</span>(<br>
+&nbsp;&nbsp;&nbsp;&nbsp;eval_metric=<span class="str">'logloss'</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;random_state=<span class="num">42</span><br>
+)<br><br>
+model.<span class="fn">fit</span>(X_bal, y_bal)<br>
+y_pred = model.<span class="fn">predict</span>(X_test)<br>
+y_proba = model.<span class="fn">predict_proba</span>(X_test)[:,<span class="num">1</span>]<br><br>
+auc = <span class="fn">roc_auc_score</span>(y_test, y_proba)<br>
+<span class="cm"># ROC-AUC: 0.80</span>
+      </div>
+    </div>
+    <div class="code-card">
+      <div class="code-header">
+        <div class="code-dots">
+          <div class="code-dot" style="background:#ff5f57"></div>
+          <div class="code-dot" style="background:#febc2e"></div>
+          <div class="code-dot" style="background:#28c840"></div>
+        </div>
+        <span class="code-title">preprocessing.py</span>
+      </div>
+      <div class="code-body">
+<span class="cm"># Fix TotalCharges (spaces → NaN)</span><br>
+df[<span class="str">'TotalCharges'</span>] = pd.<span class="fn">to_numeric</span>(<br>
+&nbsp;&nbsp;&nbsp;&nbsp;df[<span class="str">'TotalCharges'</span>],<br>
+&nbsp;&nbsp;&nbsp;&nbsp;errors=<span class="str">'coerce'</span><br>
+)<br>
+df.<span class="fn">dropna</span>(inplace=<span class="kw">True</span>)<br><br>
+<span class="cm"># Encode target safely</span><br>
+df[<span class="str">'Churn'</span>] = df[<span class="str">'Churn'</span>].str.<span class="fn">strip</span>()<br>
+df[<span class="str">'Churn'</span>] = df[<span class="str">'Churn'</span>].<span class="fn">map</span>({<span class="str">'Yes'</span>:<span class="num">1</span>,<span class="str">'No'</span>:<span class="num">0</span>})<br>
+df[<span class="str">'Churn'</span>] = df[<span class="str">'Churn'</span>].<span class="fn">astype</span>(<span class="fn">int</span>)
+      </div>
+    </div>
+    <div class="code-card">
+      <div class="code-header">
+        <div class="code-dots">
+          <div class="code-dot" style="background:#ff5f57"></div>
+          <div class="code-dot" style="background:#febc2e"></div>
+          <div class="code-dot" style="background:#28c840"></div>
+        </div>
+        <span class="code-title">visualization.py</span>
+      </div>
+      <div class="code-body">
+<span class="cm"># Feature importance plot</span><br>
+feat_imp = pd.<span class="fn">Series</span>(<br>
+&nbsp;&nbsp;&nbsp;&nbsp;model.feature_importances_,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;index=X.columns<br>
+)<br>
+feat_imp.<span class="fn">nlargest</span>(<span class="num">10</span>).<span class="fn">plot</span>(<br>
+&nbsp;&nbsp;&nbsp;&nbsp;kind=<span class="str">'barh'</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;color=<span class="str">'steelblue'</span><br>
+)<br>
+plt.<span class="fn">savefig</span>(<span class="str">'feature_importance.png'</span>)<br>
+plt.<span class="fn">show</span>()
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+<footer>
+  <span>Customer Churn Prediction — Manish Singh</span>
+  <span style="color:var(--accent);">github.com/manish123456-ctrl</span>
+</footer>
+
+<script>
+  // Intersection observer for animations
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        // trigger bar fills
+        entry.target.querySelectorAll('[data-width]').forEach(bar => {
+          setTimeout(() => { bar.style.width = bar.dataset.width + '%'; }, 100);
+        });
+        entry.target.querySelectorAll('.feature-bar[data-width]').forEach(bar => {
+          setTimeout(() => { bar.style.width = bar.dataset.width + '%'; }, 200);
+        });
+      }
+    });
+  }, { threshold: 0.15 });
+
+  document.querySelectorAll('.pipeline-step, .result-card, .feature-row').forEach(el => observer.observe(el));
+
+  // Hero bar
+  setTimeout(() => {
+    const heroBar = document.getElementById('hero-bar');
+    if (heroBar) heroBar.style.width = '79%';
+  }, 800);
+
+  // Smooth scroll
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+</script>
+</body>
+</html>
